@@ -5,11 +5,10 @@
 import pandas as pd
 import numpy as np
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.impute import SimpleImputer
 
 
-class SimpleImputation:
+class Imputation:
     """
         A class of methods for imputing time series data by classical methods
     """
@@ -121,24 +120,6 @@ class SimpleImputation:
         return imputed_time_series
 
 
-def calculate_error(actual, predicted):
-    """
-    Calculate values of errors
-
-    @param actual:    actual values
-    @param predicted: predictions
-    @return:          dict of error values
-    """
-
-    metrics = {
-        'MAE': mean_absolute_error(y_true=actual, y_pred=predicted),
-        'RMSE': mean_squared_error(y_true=actual, y_pred=predicted, squared=False),
-        'R2': r2_score(y_true=actual, y_pred=predicted)
-    }
-
-    return metrics
-
-
 if __name__ == '__main__':
     np.random.seed(13)
 
@@ -149,9 +130,7 @@ if __name__ == '__main__':
     arr_missed = arr.copy()
     arr_missed[missed_indexes] = np.nan
 
-    arr_imputed = SimpleImputation.moving_average_imputation(time_series=pd.Series(arr_missed)).values
+    arr_imputed = Imputation.moving_average_imputation(time_series=pd.Series(arr_missed)).values
 
     print(arr_missed)
     print(arr_imputed)
-    print(calculate_error(actual=arr, predicted=arr_imputed))
-
