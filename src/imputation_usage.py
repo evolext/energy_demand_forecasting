@@ -6,10 +6,8 @@
 import pandas as pd
 import numpy as np
 
+from fancyimpute import IterativeImputer,  SoftImpute, BiScaler
 from sklearn.impute import KNNImputer
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_squared_error as mse, mean_absolute_error as mae
 
@@ -107,4 +105,11 @@ if __name__ == '__main__':
     # MICE
     mice_model = IterativeImputer(random_state=SEED, max_iter=50, tol=1e-5)
     ts_nd_imputed = mice_model.fit_transform(ts_nd_missed)
+    print(calculate_error(actual=ts_nd_actual, predicted=ts_nd_imputed))
+
+    # SoftImpute
+    bi_scaler = BiScaler()
+    ts_nd_normalized = bi_scaler.fit_transform(ts_nd_missed)
+    ts_nd_imputed = SoftImpute(verbose=False).fit_transform(ts_nd_normalized)
+    ts_nd_imputed = bi_scaler.inverse_transform(ts_nd_imputed)
     print(calculate_error(actual=ts_nd_actual, predicted=ts_nd_imputed))
