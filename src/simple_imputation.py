@@ -1,22 +1,20 @@
 """
-     A module describing the class of imputation of time series data by various methods,
-     starting from classical and ending with modern ones
+     A module describing the class of imputation of time series data by classcial methods
 """
 
 import pandas as pd
 import numpy as np
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.impute import SimpleImputer
 
 
 class Imputation:
     """
-        Time series imputation class.
+        A class of methods for imputing time series data by classical methods
     """
 
     @staticmethod
-    def simple_imputation(time_series: pd.Series, strategy: str = 'mean') -> pd.Series:
+    def statistical_imputation(time_series: pd.Series, strategy: str = 'mean') -> pd.Series:
         """
         Implementation of the simplest methods of imputation of time series data
 
@@ -36,9 +34,8 @@ class Imputation:
 
         raise ValueError(f'Unknown strategy: {strategy}')
 
-
     @staticmethod
-    def observation_carried_imputation(time_series: pd.Series, strategy: str ='mean') -> pd.Series:
+    def observation_carried_imputation(time_series: pd.Series, strategy: str = 'mean') -> pd.Series:
         """
         A method of imputing time series data using adjacent defined values for imputation
 
@@ -78,24 +75,62 @@ class Imputation:
 
         return imputed_time_series
 
+    @staticmethod
+    def polynomial_imputation(time_series: pd.Series, order: int = 3) -> pd.Series:
+        """
+        Imputation using a polynomial function.
 
-def calculate_error(actual, predicted):
-    """
-    Calculate values of errors
+        @param time_series: Time series data
+        @param order:       Order of the polynomial function
+        @return:            Imputed time series data
+        """
 
-    @param actual:    actual values
-    @param predicted: predictions
-    @return:          dict of error values
-    """
+        imputed_time_series = time_series.interpolate(method='polynomial', order=order)
+        return imputed_time_series
 
-    metrics = {
-        'MAE': mean_absolute_error(y_true=actual, y_pred=predicted),
-        'RMSE': mean_squared_error(y_true=actual, y_pred=predicted, squared=False)
-    }
+    @staticmethod
+    def spline_imputation(time_series: pd.Series, order: int = 3, smoothing_coef: float = 0) -> pd.Series:
+        """
+        Imputation using a spline function.
 
-    return metrics
+        @param time_series:    Time series data
+        @param order:          Order of the spline function
+        @param smoothing_coef: Smoothing coefficient for the spline function
+        @return:               Imputed time series data
+        """
+
+        imputed_time_series = time_series.interpolate(method='spline', order=order, s=smoothing_coef)
+        return imputed_time_series
+
+    @staticmethod
+    def moving_average_imputation(time_series: pd.Series) -> pd.Series:
+        """
+        Imputation using a moving average function.
+
+        @param time_series: Time series data
+        @return:            Imputed time series data
+        """
+
+        nan_indexes = np.where(np.isnan(time_series.values))[0]
+        imputed_time_series = time_series.copy()
+
+        for index in nan_indexes:
+            imputed_time_series.iloc[index] = np.mean(imputed_time_series.iloc[:index])
+
+        return imputed_time_series
 
 
 if __name__ == '__main__':
-    arr = pd.Series([1, np.nan, 2, 3, 0, 1, np.nan, 0, 3, np.nan, np.nan])
-    print(Imputation.observation_carried_imputation(time_series=arr, strategy='previous'))
+    np.random.seed(13)
+
+    # Usage example
+    arr = np.random.normal(loc=0, scale=1, size=10)
+
+    missed_indexes = np.random.choice(len(arr), int(len(arr) * 0.2), replace=False)
+    arr_missed = arr.copy()
+    arr_missed[missed_indexes] = np.nan
+
+    arr_imputed = Imputation.moving_average_imputation(time_series=pd.Series(arr_missed)).values
+
+    print(arr_missed)
+    print(arr_imputed)
