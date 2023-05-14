@@ -108,7 +108,7 @@ if __name__ == '__main__':
     print(calculate_error(actual=ts_nd_actual, predicted=ts_nd_imputed))
 
     # SoftImpute
-    bi_scaler = BiScaler()
+    bi_scaler = BiScaler(verbose=False)
     ts_nd_normalized = bi_scaler.fit_transform(ts_nd_missed)
     ts_nd_imputed = SoftImpute(verbose=False).fit_transform(ts_nd_normalized)
     ts_nd_imputed = bi_scaler.inverse_transform(ts_nd_imputed)
