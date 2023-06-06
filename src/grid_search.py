@@ -37,9 +37,6 @@ class GridSearch:
         params_values = [[(p, v) for v in value_list] for p, value_list in param_grid.items()]
         self.grid = [dict(combo) for combo in product(*params_values)]
         self.scores_ = [None for i in range(len(self.grid))]
-        self.best_index_ = None
-        self.best_score_ = None
-        self.best_params_ = None
 
     def fit(self, fit_params: Dict[str, Any], val_series: TimeSeries) -> None:
         """
@@ -49,24 +46,37 @@ class GridSearch:
         @param val_series: TimeSeries for validation
         """
         for k in trange(len(self.grid), desc='Grid search process'):
-            # Params concatenation
-            params_k = self.immutable_params.copy()
-            params_k.update(self.grid[k])
+            try:
+                # Params concatenation
+                params_k = self.immutable_params.copy()
+                params_k.update(self.grid[k])
 
-            # Model training
-            model_it = self.estimator(**params_k)
-            model_it.fit(**fit_params)
+                if 'pl_trainer_kwargs' in params_k:
+                    params_k['pl_trainer_kwargs']['callbacks'] = [
+                        EarlyStopping(monitor='val_loss', patience=5, min_delta=0.01, mode='min')
+                    ]
 
-            # Calculation of metrics on the valid set
-            valid_predicted = model_it.predict(n=len(val_series), series=fit_params['series'], verbose=False)
-            valid_score = rmse(actual_series=val_series, pred_series=valid_predicted)
-            self.scores_[k] = valid_score
+                # Model training
+                model_it = self.estimator(**params_k)
+                model_it.fit(**fit_params)
 
-        self.best_index_ = np.argmin(self.scores_)
-        self.best_score_ = self.scores_[self.best_index_]
+                # Calculation of metrics on the train set
+                if 'input_chunk_length' in model_it.model_params:
+                    input_length = model_it.model_params['input_chunk_length']
+                else:
+                    input_length = model_it.model_params['lags']
 
-        self.best_params_ = self.immutable_params.copy()
-        self.best_params_.update(self.grid[self.best_index_])
+                initial_train, actual_train = fit_params['series'].split_after(input_length)
+                train_predicted = model_it.predict(n=len(actual_train), series=initial_train, verbose=False)
+                train_score = rmse(actual_series=actual_train, pred_series=train_predicted)
+
+                # Calculation of metrics on the valid set
+                valid_predicted = model_it.predict(n=len(val_series), series=fit_params['series'], verbose=False)
+                valid_score = rmse(actual_series=val_series, pred_series=valid_predicted)
+                self.scores_[k] = {'train': train_score, 'valid': valid_score}
+
+            except Exception:
+                print('problems with param config {0}'.format(params_k))
 
     def get_scores(self) -> pd.DataFrame:
         """
@@ -74,10 +84,11 @@ class GridSearch:
 
         @return: Scores table with corresponding parameters
         """
-        if self.best_score_ is None:
-            raise NotFittedError(f'This {self.estimator} instance is not fitted yet. Call fit() before')
-
-        grid_search_result = pd.DataFrame({'params': gs.grid, 'score': gs.scores_})
+        grid_search_result = pd.DataFrame({
+            'params': self.grid,
+            'train_score': [sc['train'] for sc in self.scores_],
+            'valid_score': [sc['valid'] for sc in self.scores_],
+        })
         return grid_search_result
 
 
@@ -110,8 +121,6 @@ if __name__ == '__main__':
     FORECAST_HORIZON = 7
     SEED = 13
 
-    stopper = EarlyStopping(monitor='val_loss', patience=5, min_delta=0.01, mode='min')
-
     my_model = RNNModel(
         model='LSTM',
 
@@ -126,7 +135,6 @@ if __name__ == '__main__':
         pl_trainer_kwargs={
             'accelerator': 'gpu',
             'devices': [0],
-            'callbacks': [stopper],
             'logger': False
         }
     )
@@ -144,7 +152,7 @@ if __name__ == '__main__':
         'future_covariates': covariates_std,
         'val_future_covariates': covariates_std,
 
-        'verbose': False
+        'verbose': True
     }, val_series=valid_target_std)
 
     print(gs.get_scores())
