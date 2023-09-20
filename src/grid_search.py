@@ -2,7 +2,7 @@
     A module for determining the optimal model for predicting a time series based on a grid of parameters
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 from itertools import product
 import logging
 import warnings
@@ -26,7 +26,7 @@ class GridSearch:
         A class for calculating prediction model errors based on various combinations of parameters.
         Supported darts models: RNNModel,CatBoostModel, TFTModel, TCNModel.
     """
-    def __init__(self, estimator: RNNModel | CatBoostModel | TFTModel | TCNModel, param_grid: Dict[str, List]):
+    def __init__(self, estimator: Union[RNNModel, CatBoostModel, TFTModel, TCNModel], param_grid: Dict[str, List]):
         # Save immutable model parameters
         self.immutable_params = {p: val for p, val in estimator.model_params.items() if p not in param_grid.keys()}
 
